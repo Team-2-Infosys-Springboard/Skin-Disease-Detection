@@ -6,67 +6,191 @@
     <title>Skin Disease Detection</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 0;
-            background: #f9f9f9;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
             color: #333;
         }
         .container {
             text-align: center;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            max-width: 600px;
+            width: 90%;
         }
         h1 {
-            color: #0056b3;
+            color: #2c3e50;
             margin-bottom: 20px;
+            font-size: 2.2em;
         }
         form {
             display: flex;
             flex-direction: column;
             align-items: center;
+            gap: 20px;
         }
-        input[type="file"] {
-            margin: 10px 0;
+        .upload-area {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            border: 2px dashed #0056b3;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            background: #f0f8ff;
+            border-color: #003d82;
+        }
+        #file-input {
+            display: none;
+        }
+        #preview {
+            max-width: 300px;
+            max-height: 300px;
+            margin: 20px auto;
+            border-radius: 8px;
+            display: none;
         }
         button {
             background: #0056b3;
             color: white;
             border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
+            padding: 12px 30px;
+            border-radius: 25px;
             cursor: pointer;
             font-size: 16px;
+            font-weight: 500;
+            transition: transform 0.2s ease, background 0.2s ease;
+            margin-top: 20px;
         }
         button:hover {
             background: #003d82;
+            transform: translateY(-2px);
         }
         .footer {
-            margin-top: 15px;
+            margin-top: 20px;
             font-size: 14px;
             color: #666;
+        }
+        .upload-text {
+            color: #666;
+            margin: 10px 0;
+        }
+        #loading {
+            display: none;
+            margin: 20px 0;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0056b3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Skin Disease Detection</h1>
-        <p>Upload an image of the affected skin area for analysis.</p>
-        <form action="/predict" method="post" enctype="multipart/form-data">
-            <input type="file" name="file" accept="image/*" required>
-            <button type="submit">Predict</button>
+        <form action="/predict" method="post" enctype="multipart/form-data" id="upload-form">
+            <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                <p class="upload-text">Click or drag image here to upload</p>
+                <input type="file" id="file-input" name="file" accept="image/*" required>
+            </div>
+            <img id="preview" src="#" alt="Preview">
+            <div id="loading">
+                <div class="loading-spinner"></div>
+                <p>Analyzing image...</p>
+            </div>
+            <button type="submit" id="submit-btn">Analyze Image</button>
         </form>
         <div class="footer">
-            <p>Ensure the image is clear and well-lit for better results.</p>
+            <p>For best results, ensure the image is clear and well-lit.</p>
         </div>
     </div>
+
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const preview = document.getElementById('preview');
+        const form = document.getElementById('upload-form');
+        const loading = document.getElementById('loading');
+        const submitBtn = document.getElementById('submit-btn');
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        form.addEventListener('submit', function(e) {
+            loading.style.display = 'block';
+            submitBtn.disabled = true;
+        });
+
+        // Drag and drop functionality
+        const uploadArea = document.querySelector('.upload-area');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            uploadArea.style.background = '#e3f2fd';
+        }
+
+        function unhighlight(e) {
+            uploadArea.style.background = '';
+        }
+
+        uploadArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            fileInput.files = dt.files;
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+    </script>
 </body>
 </html>
